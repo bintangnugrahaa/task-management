@@ -2,11 +2,18 @@ package main
 
 import (
 	"net/http"
+	"tusk/config"
+	"tusk/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	// database
+	db := config.DatabaseConnection()
+	db.AutoMigrate(&models.User{}, &models.Task{})
+	config.CreateOwnerAccount(db)
+
 	// router
 	router := gin.Default()
 	router.GET("/", func(c *gin.Context) {
