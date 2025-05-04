@@ -15,5 +15,6 @@ func main() {
 		})
 	})
 
+	router.Static("attachments", "./attachments")
 	router.Run("192.168.80.1:8080")
 }
