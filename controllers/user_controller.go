@@ -13,95 +13,82 @@ type UserController struct {
 	DB *gorm.DB
 }
 
-// Login handles user login
 func (u *UserController) Login(c *gin.Context) {
-	var loginRequest struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
-	}
-
-	// Validate incoming request
-	if err := c.ShouldBindJSON(&loginRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	user := models.User{}
+	errBindJson := c.ShouldBindJSON(&user)
+	if errBindJson != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errBindJson.Error()})
 		return
 	}
 
-	var user models.User
-	// Query user by email
-	if err := u.DB.Where("email = ?", loginRequest.Email).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Email is incorrect"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		}
+	password := user.Password
+
+	errDB := u.DB.Where("email=?", user.Email).Take(&user).Error
+	if errDB != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Email or Password is Wrong"})
 		return
 	}
 
-	// Compare hashed password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password is incorrect"})
+	errHash := bcrypt.CompareHashAndPassword(
+		[]byte(user.Password),
+		[]byte(password),
+	)
+	if errHash != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email or Password is Wrong"})
 		return
 	}
 
-	// Respond with user data
-	c.JSON(http.StatusOK, gin.H{
-		"id":    user.ID,
-		"email": user.Email,
-		"name":  user.Name,
-	})
+	c.JSON(http.StatusOK, user)
 }
 
-// CreateAccount handles user registration
 func (u *UserController) CreateAccount(c *gin.Context) {
-	var user models.User
-	// Bind incoming JSON request
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	user := models.User{}
+	errBindJson := c.ShouldBindJSON(&user)
+	if errBindJson != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errBindJson.Error()})
 		return
 	}
 
-	// Check if email already exists
-	if err := u.DB.Where("email = ?", user.Email).First(&user).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exists"})
+	emailExist := u.DB.Where("email=?", user.Email).First(&user).RowsAffected != 0
+	if emailExist {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exist"})
 		return
 	}
 
-	// Hash password before saving
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-		return
-	}
-	user.Password = string(hashedPassword)
+	hashedPasswordBytes, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 
-	// Set default role
+	user.Password = string(hashedPasswordBytes)
 	user.Role = "Employee"
 
-	// Save new user to the database
-	if err := u.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	errDB := u.DB.Create(&user).Error
+	if errDB != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errDB.Error()})
 		return
 	}
 
-	// Respond with the created user
-	c.JSON(http.StatusCreated, gin.H{
-		"id":    user.ID,
-		"email": user.Email,
-		"name":  user.Name,
-		"role":  user.Role,
-	})
+	c.JSON(http.StatusCreated, user)
 }
 
-// Delete handles user deletion
 func (u *UserController) Delete(c *gin.Context) {
 	id := c.Param("id")
 
-	// Attempt to delete the user
-	if err := u.DB.Delete(&models.User{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	errDB := u.DB.Delete(&models.User{}, id).Error
+	if errDB != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errDB.Error()})
 		return
 	}
 
-	// Respond with success message
-	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
+	c.JSON(http.StatusOK, "Deleted")
+}
+
+func (u *UserController) GetEmployee(c *gin.Context) {
+	users := []models.User{}
+
+	errDB := u.DB.Select("id,name").Where("role=?", "Employee").Find(&users).Error
+	if errDB != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
 }

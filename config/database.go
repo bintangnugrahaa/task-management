@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"tusk/models"
 
 	"golang.org/x/crypto/bcrypt"
@@ -11,57 +10,40 @@ import (
 )
 
 const (
-	dbHost     = "localhost"
-	dbPort     = 3306
-	dbUser     = "root"
-	dbPassword = "root"
-	dbName     = "tusk"
+	host     = "localhost"
+	port     = 3306
+	user     = "root"
+	password = "root"
+	dbName   = "tusk"
 )
 
 func DatabaseConnection() *gorm.DB {
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
-		dbUser, dbPassword, dbHost, dbPort, dbName,
+		user, password, host, port, dbName,
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	database, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		panic(err)
 	}
 
-	return db
+	return database
 }
 
 func CreateOwnerAccount(db *gorm.DB) {
-	const (
-		defaultPassword = "123456"
-		defaultEmail    = "owner@go.id"
-	)
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
-	if err != nil {
-		log.Fatalf("failed to hash password: %v", err)
-	}
-
+	hashedPasswordBytes, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 	owner := models.User{
 		Role:     "Admin",
 		Name:     "Owner",
-		Email:    defaultEmail,
-		Password: string(hashedPassword),
+		Password: string(hashedPasswordBytes),
+		Email:    "owner@go.id",
 	}
 
-	var existing models.User
-	if err := db.Where("email = ?", owner.Email).First(&existing).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			if err := db.Create(&owner).Error; err != nil {
-				log.Printf("failed to create owner account: %v", err)
-			} else {
-				log.Println("Owner account created.")
-			}
-		} else {
-			log.Printf("failed to query owner account: %v", err)
-		}
+	if db.Where("email=?", owner.Email).First(&owner).RowsAffected == 0 {
+		db.Create(&owner)
 	} else {
-		log.Println("Owner account already exists.")
+		fmt.Println("owner exist")
 	}
+
 }
