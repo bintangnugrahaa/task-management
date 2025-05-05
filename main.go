@@ -27,6 +27,7 @@ func main() {
 	})
 
 	router.POST("/users/login", userController.Login)
+	router.POST("/users", userController.CreateAccount)
 
 	router.Static("attachments", "./attachments")
 	router.Run("192.168.80.1:8080")
