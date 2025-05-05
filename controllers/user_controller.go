@@ -61,7 +61,7 @@ func (u *UserController) CreateAccount(c *gin.Context) {
 	}
 
 	// Check if email already exists
-	if emailExist := u.DB.Where("email = ?", user.Email).First(&user).RowsAffected != 0; emailExist {
+	if err := u.DB.Where("email = ?", user.Email).First(&user).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exists"})
 		return
 	}
@@ -90,4 +90,18 @@ func (u *UserController) CreateAccount(c *gin.Context) {
 		"name":  user.Name,
 		"role":  user.Role,
 	})
+}
+
+// Delete handles user deletion
+func (u *UserController) Delete(c *gin.Context) {
+	id := c.Param("id")
+
+	// Attempt to delete the user
+	if err := u.DB.Delete(&models.User{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Respond with success message
+	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
 }
