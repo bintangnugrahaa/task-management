@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"tusk/models"
 
 	"golang.org/x/crypto/bcrypt"
@@ -10,45 +11,57 @@ import (
 )
 
 const (
-	host     = "localhost"
-	port     = 3306
-	user     = "root"
-	password = "root"
-	dbName   = "tusk"
+	dbHost     = "localhost"
+	dbPort     = 3306
+	dbUser     = "root"
+	dbPassword = "root"
+	dbName     = "tusk"
 )
 
 func DatabaseConnection() *gorm.DB {
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
-		user, password, host, port, dbName,
+		dbUser, dbPassword, dbHost, dbPort, dbName,
 	)
 
-	database, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic("Failed to connect to database: " + err.Error())
+		log.Fatalf("failed to connect to database: %v", err)
 	}
 
-	return database
+	return db
 }
 
 func CreateOwnerAccount(db *gorm.DB) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+	const (
+		defaultPassword = "123456"
+		defaultEmail    = "owner@go.id"
+	)
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 	if err != nil {
-		panic("Failed to hash password: " + err.Error())
+		log.Fatalf("failed to hash password: %v", err)
 	}
 
 	owner := models.User{
 		Role:     "Admin",
 		Name:     "Owner",
-		Email:    "owner@go.id",
+		Email:    defaultEmail,
 		Password: string(hashedPassword),
 	}
 
 	var existing models.User
-	if db.Where("email = ?", owner.Email).First(&existing).RowsAffected == 0 {
-		db.Create(&owner)
-		fmt.Println("Owner account created.")
+	if err := db.Where("email = ?", owner.Email).First(&existing).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			if err := db.Create(&owner).Error; err != nil {
+				log.Printf("failed to create owner account: %v", err)
+			} else {
+				log.Println("Owner account created.")
+			}
+		} else {
+			log.Printf("failed to query owner account: %v", err)
+		}
 	} else {
-		fmt.Println("Owner already exists.")
+		log.Println("Owner account already exists.")
 	}
 }
