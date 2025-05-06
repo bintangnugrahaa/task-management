@@ -145,3 +145,24 @@ func (t *TaskController) Fix(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "Fix to Queue")
 }
+
+func (t *TaskController) Approve(c *gin.Context) {
+	id := c.Param("id")
+	approvedDate := c.PostForm("approvedDate")
+
+	if err := t.DB.First(&models.Task{}, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	errDB := t.DB.Where("id=?", id).Updates(models.Task{
+		Status:       "Approved",
+		ApprovedDate: approvedDate,
+	}).Error
+	if errDB != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, "Approved")
+}
