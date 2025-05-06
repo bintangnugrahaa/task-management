@@ -184,3 +184,15 @@ func (t *TaskController) FindById(c *gin.Context) {
 
 	c.JSON(http.StatusOK, task)
 }
+
+func (t *TaskController) NeedToBeReview(c *gin.Context) {
+	tasks := []models.Task{}
+
+	errDB := t.DB.Preload("User").Where("status=?", "Review").Order("submit_date ASC").Limit(2).Find(&tasks).Error
+	if errDB != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tasks)
+}
