@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"os"
+	"strconv"
 	"tusk/models"
 
 	"github.com/gin-gonic/gin"
@@ -118,4 +119,29 @@ func (t *TaskController) Reject(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, "Rejected")
+}
+
+func (t *TaskController) Fix(c *gin.Context) {
+	id := c.Param("id")
+	revision, errConv := strconv.Atoi(c.PostForm("revision"))
+	if errConv != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": errConv.Error()})
+		return
+	}
+
+	if err := t.DB.First(&models.Task{}, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	errDB := t.DB.Where("id=?", id).Updates(models.Task{
+		Status:   "Queue",
+		Revision: int8(revision),
+	}).Error
+	if errDB != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, "Fix to Queue")
 }
