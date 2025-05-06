@@ -166,3 +166,21 @@ func (t *TaskController) Approve(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "Approved")
 }
+
+func (t *TaskController) FindById(c *gin.Context) {
+	task := models.Task{}
+	id := c.Param("id")
+
+	if err := t.DB.First(&models.Task{}, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	errDB := t.DB.Preload("User").Find(&task, id).Error
+	if errDB != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
+}
