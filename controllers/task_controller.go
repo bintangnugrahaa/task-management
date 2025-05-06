@@ -196,3 +196,18 @@ func (t *TaskController) NeedToBeReview(c *gin.Context) {
 
 	c.JSON(http.StatusOK, tasks)
 }
+
+func (t *TaskController) ProgressTasks(c *gin.Context) {
+	tasks := []models.Task{}
+	userId := c.Param("userId")
+
+	errDB := t.DB.Where(
+		"(status!=? AND user_id=?) OR (revision!=? AND user_id=?)", "Queue", userId, 0, userId,
+	).Order("updated_at DESC").Limit(5).Find(&tasks).Error
+	if errDB != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tasks)
+}
