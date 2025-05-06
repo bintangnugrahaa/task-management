@@ -32,6 +32,8 @@ func main() {
 
 	router.POST("/tasks", taskController.Create)
 	router.DELETE("/tasks/:id", taskController.Delete)
+	router.PATCH("/tasks/:id/submit", taskController.Submit)
+	router.PATCH("/tasks/:id/reject", taskController.Reject)
 
 	router.Static("/attachments", "./attachments")
 	router.Run("192.168.80.1:8080")
