@@ -211,3 +211,17 @@ func (t *TaskController) ProgressTasks(c *gin.Context) {
 
 	c.JSON(http.StatusOK, tasks)
 }
+
+func (t *TaskController) Statistic(c *gin.Context) {
+	userId := c.Param("userId")
+
+	stat := []map[string]interface{}{}
+
+	errDB := t.DB.Model(models.Task{}).Select("status, count(status) as total").Where("user_id=?", userId).Group("status").Find(&stat).Error
+	if errDB != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, stat)
+}
