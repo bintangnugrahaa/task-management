@@ -10,20 +10,19 @@ import (
 )
 
 func main() {
-	// database
+	// Database
 	db := config.DatabaseConnection()
 	db.AutoMigrate(&models.User{}, &models.Task{})
 	config.CreateOwnerAccount(db)
 
-	// controller
+	// Controller
 	userController := controllers.UserController{DB: db}
+	taskController := controllers.TaskController{DB: db}
 
-	// router
+	// Router
 	router := gin.Default()
 	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Welcome to Tusk API",
-		})
+		c.JSON(http.StatusOK, "Welcome to Tusk API")
 	})
 
 	router.POST("/users/login", userController.Login)
@@ -31,6 +30,8 @@ func main() {
 	router.DELETE("/users/:id", userController.Delete)
 	router.GET("/users/Employee", userController.GetEmployee)
 
-	router.Static("attachments", "./attachments")
+	router.POST("/tasks", taskController.Create)
+
+	router.Static("/attachments", "./attachments")
 	router.Run("192.168.80.1:8080")
 }
