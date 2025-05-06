@@ -225,3 +225,17 @@ func (t *TaskController) Statistic(c *gin.Context) {
 
 	c.JSON(http.StatusOK, stat)
 }
+
+func (t *TaskController) FindByUserAndStatus(c *gin.Context) {
+	tasks := []models.Task{}
+	userId := c.Param("userId")
+	status := c.Param("status")
+
+	errDB := t.DB.Where("user_id=? AND status=?", userId, status).Find(&tasks).Error
+	if errDB != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": errDB.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tasks)
+}
