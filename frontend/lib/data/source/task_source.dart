@@ -53,4 +53,18 @@ class TaskSource {
       return null;
     }
   }
+
+  static Future<bool> delete(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseURL/$id'),
+      );
+      DMethod.logResponse(response);
+
+      return response.statusCode == 200;
+    } catch (e) {
+      DMethod.log(e.toString(), colorCode: 1);
+      return false;
+    }
+  }
 }
